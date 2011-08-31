@@ -669,6 +669,10 @@ enchant.Game = enchant.Class.create(enchant.EventTarget, {
                 }
             }
         })(enchant);
+        /**
+         * 複数のパターンをもつ画像ファイルの、１パターンの大きさを格納する
+         */
+        this._frameSize ={};
 
         this._scenes = [];
         /**
@@ -826,6 +830,15 @@ enchant.Game = enchant.Class.create(enchant.EventTarget, {
             assets = Array.prototype.slice.call(arguments);
         }
         [].push.apply(this._assets, assets);
+    },
+    /**
+     * 複数のパターンをもつ画像ファイルの、１パターンの大きさを設定する
+     * @param {String} assetName  preload で指定した画像のファイル名
+     * @param {int}  width  １パターンの幅
+     * @param {int}  height  １パターンの高さ
+     */
+    setFrameSize: function (assetName, width, height) {
+    	this._frameSize[assetName]={width:width,height:height};
     },
     /**
      * ファイルのロードを行う.
@@ -1427,7 +1440,7 @@ enchant.Sprite = enchant.Class.create(enchant.Entity, {
      *   var bear = new Sprite(32, 32);
      *   bear.image = game.assets['chara1.gif'];
      *
-     * @param {Number} [width] Spriteの横幅.
+     * @param {Number} [width] Spriteの横幅. 
      * @param {Number} [height] Spriteの高さ.
      * @constructs
      * @extends enchant.Entity
@@ -1591,6 +1604,19 @@ enchant.Sprite = enchant.Class.create(enchant.Entity, {
         }
     }
 });
+/**
+ * 画像ファイル名を指定してスプライトを生成する。
+ * @param {String} image   画像のファイル名。game.setFrameSize(image,w,h) で大きさが指定されている必要がある。 
+ * @param {Numner} [frame]  フレーム番号
+ */
+enchant.Sprite.byImage=function (image, frame) {
+	var game=enchant.Game.instance;
+	var sz=game._frameSize[image];
+	if (sz==null) sz={width:16,height:16};
+	var res=new Sprite(sz.width,sz.height);
+	res.image=game.assets[image];
+	return res;
+};
 
 /**
  * @scope enchant.Label.prototype
@@ -1986,6 +2012,29 @@ enchant.Group = enchant.Class.create(enchant.Node, {
 
         this._x = 0;
         this._y = 0;
+    },
+    /**
+     * 各Nodeに対して繰り返し実行する。
+     * @param {Node -> boolean} iter 実行する内容。 
+     * @param {Object} self   iter 内で this にするオブジェクト(optional)。これが指定されると、self 自身は繰り返しの対象から外れる。
+     */
+    eachChildren: function (iter, self) {
+    	this.childNodes.forEach(function (node) {
+    		if (node!==this) iter.call(this,node);
+    	},self);
+    },
+    /**
+     * 特定のクラスの各Nodeに対して繰り返し実行する
+     * @param {Class} klass  実行の対象となるクラス
+     * @param {Node -> boolean} iter 実行する内容。 
+     * @param {Object} self   iter 内で this にするオブジェクト(optional)。これが指定されると、self 自身は繰り返しの対象から外れる。
+     */
+    filterChildren: function (klass, iter, self) {
+    	this.eachChildren(function (node) {
+    		if (node instanceof klass) {
+    			iter.call(this,node);
+    		}
+    	},self);
     },
     /**
      * GroupにNodeを追加する.
